@@ -123,6 +123,11 @@ async function handleLogin(e) {
 // Login with Supabase
 async function loginWithSupabase(email, password) {
     try {
+        // Test hesapları için direkt false döndür ki fallback çalışsın
+        if (email === 'admin@test.com' || email === 'moderator@test.com') {
+            return { success: false, message: 'Test hesabı - fallback kullanılacak' };
+        }
+        
         const { data, error } = await supabase.rpc('admin_login', {
             email_param: email,
             password_param: password
