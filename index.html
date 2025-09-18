@@ -536,29 +536,236 @@
                         </div>
                     </div>
 
-                    <!-- Other pages would go here -->
+                    <!-- İkaz Yönetimi Sayfası -->
                     <div id="strikesPage" class="page-content">
                         <h2 class="mb-4">
                             <i class="fas fa-exclamation-triangle me-2"></i>
                             İkaz Yönetimi
                         </h2>
-                        <p>İkaz yönetimi sayfası burada olacak...</p>
+                        
+                        <!-- İkaz İstatistikleri -->
+                        <div class="row mb-4">
+                            <div class="col-md-3 mb-3">
+                                <div class="card text-center">
+                                    <div class="card-body">
+                                        <h3 class="text-danger">0</h3>
+                                        <p class="mb-0">Toplam İkaz</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="card text-center">
+                                    <div class="card-body">
+                                        <h3 class="text-warning">0</h3>
+                                        <p class="mb-0">Aktif İkaz</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="card text-center">
+                                    <div class="card-body">
+                                        <h3 class="text-warning">0</h3>
+                                        <p class="mb-0">Seviye 1</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="card text-center">
+                                    <div class="card-body">
+                                        <h3 class="text-danger">0</h3>
+                                        <p class="mb-0">Seviye 2</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- İkaz Listesi -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">İkaz Listesi</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>ID</th>
+                                                <th>Kullanıcı</th>
+                                                <th>Sebep</th>
+                                                <th>Seviye</th>
+                                                <th>Tarih</th>
+                                                <th>İşlemler</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="strikesTable">
+                                            <tr>
+                                                <td colspan="6" class="text-center text-muted">Henüz ikaz bulunmuyor</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
+                    <!-- Kullanıcılar Sayfası -->
                     <div id="usersPage" class="page-content">
                         <h2 class="mb-4">
                             <i class="fas fa-users me-2"></i>
                             Kullanıcı Yönetimi
                         </h2>
-                        <p>Kullanıcı yönetimi sayfası burada olacak...</p>
+                        
+                        <!-- Kullanıcı İstatistikleri -->
+                        <div class="row mb-4">
+                            <div class="col-md-3 mb-3">
+                                <div class="card text-center">
+                                    <div class="card-body">
+                                        <h3 class="text-primary">0</h3>
+                                        <p class="mb-0">Toplam Kullanıcı</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="card text-center">
+                                    <div class="card-body">
+                                        <h3 class="text-success">0</h3>
+                                        <p class="mb-0">Aktif Kullanıcı</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="card text-center">
+                                    <div class="card-body">
+                                        <h3 class="text-danger">0</h3>
+                                        <p class="mb-0">Yasaklı Kullanıcı</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="card text-center">
+                                    <div class="card-body">
+                                        <h3 class="text-info">0</h3>
+                                        <p class="mb-0">Yeni Kullanıcılar</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Kullanıcı Listesi -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">Kullanıcı Listesi</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Ad</th>
+                                                <th>E-posta</th>
+                                                <th>Durum</th>
+                                                <th>Kayıt Tarihi</th>
+                                                <th>Son Giriş</th>
+                                                <th>İşlemler</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="usersTable">
+                                            <tr>
+                                                <td colspan="6" class="text-center text-muted">Henüz kullanıcı bulunmuyor</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
+                    <!-- Analitikler Sayfası -->
                     <div id="analyticsPage" class="page-content">
                         <h2 class="mb-4">
                             <i class="fas fa-chart-bar me-2"></i>
                             Analitikler
                         </h2>
-                        <p>Analitikler sayfası burada olacak...</p>
+                        
+                        <!-- Zaman Bazlı İstatistikler -->
+                        <div class="row mb-4">
+                            <div class="col-md-3 mb-3">
+                                <div class="card text-center">
+                                    <div class="card-body">
+                                        <h3 class="text-primary">0</h3>
+                                        <p class="mb-0">Günlük Kullanıcı</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="card text-center">
+                                    <div class="card-body">
+                                        <h3 class="text-success">0</h3>
+                                        <p class="mb-0">Haftalık Kullanıcı</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="card text-center">
+                                    <div class="card-body">
+                                        <h3 class="text-info">0</h3>
+                                        <p class="mb-0">Aylık Kullanıcı</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="card text-center">
+                                    <div class="card-body">
+                                        <h3 class="text-warning">0</h3>
+                                        <p class="mb-0">Toplam Rapor</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Grafik Alanı -->
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">Kullanıcı Büyüme Grafiği</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="text-center text-muted py-5">
+                                            <i class="fas fa-chart-line fa-3x mb-3"></i>
+                                            <p>Grafik verileri yükleniyor...</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">Sistem Durumu</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <div class="d-flex justify-content-between">
+                                                <span>Veritabanı</span>
+                                                <span class="badge badge-success">Aktif</span>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <div class="d-flex justify-content-between">
+                                                <span>API</span>
+                                                <span class="badge badge-success">Çalışıyor</span>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <div class="d-flex justify-content-between">
+                                                <span>Cache</span>
+                                                <span class="badge badge-success">Aktif</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div id="settingsPage" class="page-content">
