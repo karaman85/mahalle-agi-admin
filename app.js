@@ -40,9 +40,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Initialize Application
 function initializeApp() {
-    // Initialize Supabase client
-    if (typeof supabase !== 'undefined') {
-        supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // Initialize Supabase client (only if available)
+    try {
+        if (typeof window.supabase !== 'undefined') {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        }
+    } catch (error) {
+        console.log('Supabase not available, using test mode');
     }
     
     // Check if user is already logged in
@@ -95,17 +99,8 @@ async function handleLogin(e) {
     showLoading(true);
 
     try {
-        // Try Supabase login first
-        const result = await loginWithSupabase(email, password);
-        
-        if (result.success) {
-            currentAdmin = result.user;
-            isLoggedIn = true;
-            localStorage.setItem('admin_user', JSON.stringify(currentAdmin));
-            showAdminDashboard();
-            showAlert('Giriş başarılı!', 'success');
-        } else {
-            // Fallback to test accounts
+        // Test hesapları için direkt test login kullan
+        if (email === 'admin@test.com' || email === 'moderator@test.com') {
             const testResult = loginWithTestAccount(email, password);
             if (testResult.success) {
                 currentAdmin = testResult.user;
@@ -113,6 +108,19 @@ async function handleLogin(e) {
                 localStorage.setItem('admin_user', JSON.stringify(currentAdmin));
                 showAdminDashboard();
                 showAlert('Test hesabı ile giriş başarılı!', 'success');
+            } else {
+                showAlert('Giriş bilgileri hatalı.', 'danger');
+            }
+        } else {
+            // Diğer hesaplar için Supabase'i dene
+            const result = await loginWithSupabase(email, password);
+            
+            if (result.success) {
+                currentAdmin = result.user;
+                isLoggedIn = true;
+                localStorage.setItem('admin_user', JSON.stringify(currentAdmin));
+                showAdminDashboard();
+                showAlert('Giriş başarılı!', 'success');
             } else {
                 showAlert(result.message || 'Giriş bilgileri hatalı.', 'danger');
             }
