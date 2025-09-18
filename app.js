@@ -2,8 +2,8 @@
 const SUPABASE_URL = 'https://ebrwfexnxhpstkfzdkax.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVicndmZXhueGhwc3RrZnpka2F4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2Mzk0MTMsImV4cCI6MjA3MTIxNTQxM30.VwtwesSfm1_O-2D0orbA1McKUsMQqXZLo6Jg2d0YG5k';
 
-// Initialize Supabase client
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Initialize Supabase client (wait for supabase to be available)
+let supabase = null;
 
 // Global variables
 let currentAdmin = null;
@@ -40,6 +40,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Initialize Application
 function initializeApp() {
+    // Initialize Supabase client
+    if (typeof supabase !== 'undefined') {
+        supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }
+    
     // Check if user is already logged in
     const savedAdmin = localStorage.getItem('admin_user');
     if (savedAdmin) {
@@ -126,6 +131,11 @@ async function loginWithSupabase(email, password) {
         // Test hesapları için direkt false döndür ki fallback çalışsın
         if (email === 'admin@test.com' || email === 'moderator@test.com') {
             return { success: false, message: 'Test hesabı - fallback kullanılacak' };
+        }
+        
+        // Supabase henüz yüklenmemişse
+        if (!supabase) {
+            return { success: false, message: 'Supabase henüz yüklenmedi' };
         }
         
         const { data, error } = await supabase.rpc('admin_login', {
