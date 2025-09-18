@@ -40,13 +40,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Initialize Application
 function initializeApp() {
-    // Initialize Supabase client (only if available)
+    // Initialize Supabase client
     try {
         if (typeof window.supabase !== 'undefined') {
             supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            console.log('Supabase initialized successfully');
+        } else {
+            console.log('Supabase library not loaded, using test mode');
         }
     } catch (error) {
-        console.log('Supabase not available, using test mode');
+        console.log('Supabase initialization failed, using test mode:', error);
     }
     
     // Check if user is already logged in
@@ -112,17 +115,21 @@ async function handleLogin(e) {
                 showAlert('Giriş bilgileri hatalı.', 'danger');
             }
         } else {
-            // Diğer hesaplar için Supabase'i dene
-            const result = await loginWithSupabase(email, password);
-            
-            if (result.success) {
-                currentAdmin = result.user;
-                isLoggedIn = true;
-                localStorage.setItem('admin_user', JSON.stringify(currentAdmin));
-                showAdminDashboard();
-                showAlert('Giriş başarılı!', 'success');
+            // Gerçek hesaplar için önce Supabase'i dene
+            if (supabase) {
+                const result = await loginWithSupabase(email, password);
+                
+                if (result.success) {
+                    currentAdmin = result.user;
+                    isLoggedIn = true;
+                    localStorage.setItem('admin_user', JSON.stringify(currentAdmin));
+                    showAdminDashboard();
+                    showAlert('Supabase ile giriş başarılı!', 'success');
+                } else {
+                    showAlert(result.message || 'Giriş bilgileri hatalı.', 'danger');
+                }
             } else {
-                showAlert(result.message || 'Giriş bilgileri hatalı.', 'danger');
+                showAlert('Supabase bağlantısı yok. Test hesaplarını kullanın.', 'warning');
             }
         }
     } catch (error) {
@@ -136,33 +143,30 @@ async function handleLogin(e) {
 // Login with Supabase
 async function loginWithSupabase(email, password) {
     try {
-        // Test hesapları için direkt false döndür ki fallback çalışsın
-        if (email === 'admin@test.com' || email === 'moderator@test.com') {
-            return { success: false, message: 'Test hesabı - fallback kullanılacak' };
-        }
-        
         // Supabase henüz yüklenmemişse
         if (!supabase) {
             return { success: false, message: 'Supabase henüz yüklenmedi' };
         }
         
+        // Admin login fonksiyonu çağır
         const { data, error } = await supabase.rpc('admin_login', {
             email_param: email,
             password_param: password
         });
 
         if (error) {
-            return { success: false, message: 'Supabase bağlantı hatası' };
+            console.error('Supabase RPC error:', error);
+            return { success: false, message: 'Supabase bağlantı hatası: ' + error.message };
         }
 
         if (data && data.success) {
             return { success: true, user: data.admin_user };
         } else {
-            return { success: false, message: data?.message || 'Giriş başarısız' };
+            return { success: false, message: data?.message || 'Giriş bilgileri hatalı' };
         }
     } catch (error) {
         console.error('Supabase login error:', error);
-        return { success: false, message: 'Supabase bağlantı hatası' };
+        return { success: false, message: 'Supabase bağlantı hatası: ' + error.message };
     }
 }
 
@@ -254,15 +258,42 @@ async function loadDashboardData() {
 // Load Statistics
 async function loadStatistics() {
     try {
-        // Try to load from Supabase
-        const { data, error } = await supabase
-            .from('admin_users')
-            .select('count')
-            .single();
+        if (supabase) {
+            // Gerçek verileri Supabase'den çek
+            const [usersResult, reportsResult, strikesResult] = await Promise.all([
+                supabase.from('users').select('id', { count: 'exact' }),
+                supabase.from('reports').select('id', { count: 'exact' }).eq('status', 'pending'),
+                supabase.from('user_strikes').select('id', { count: 'exact' })
+            ]);
 
-        if (!error && data) {
-            // Update with real data
-            document.getElementById('totalUsers').textContent = data.count || '1,234';
+            // Toplam kullanıcı sayısı
+            if (!usersResult.error) {
+                document.getElementById('totalUsers').textContent = usersResult.count || '0';
+            }
+
+            // Aktif kullanıcı sayısı (son 7 gün içinde giriş yapanlar)
+            if (!usersResult.error) {
+                const activeUsersResult = await supabase
+                    .from('users')
+                    .select('id', { count: 'exact' })
+                    .gte('last_login', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+                
+                if (!activeUsersResult.error) {
+                    document.getElementById('activeUsers').textContent = activeUsersResult.count || '0';
+                }
+            }
+
+            // Bekleyen rapor sayısı
+            if (!reportsResult.error) {
+                document.getElementById('pendingReports').textContent = reportsResult.count || '0';
+            }
+
+            // Toplam ikaz sayısı
+            if (!strikesResult.error) {
+                document.getElementById('totalStrikes').textContent = strikesResult.count || '0';
+            }
+        } else {
+            console.log('Supabase not available, keeping default values');
         }
     } catch (error) {
         console.error('Error loading statistics:', error);
@@ -311,20 +342,43 @@ function updateRecentActivitiesTable(activities) {
 // Check System Status
 async function checkSystemStatus() {
     try {
-        // Test Supabase connection
-        const { data, error } = await supabase
-            .from('admin_users')
-            .select('count')
-            .limit(1);
+        if (supabase) {
+            // Test Supabase connection
+            const { data, error } = await supabase
+                .from('users')
+                .select('id')
+                .limit(1);
 
+            const statusElements = document.querySelectorAll('.status-indicator');
+            statusElements.forEach(element => {
+                if (element.classList.contains('status-online')) {
+                    element.className = 'status-indicator ' + (error ? 'status-offline' : 'status-online');
+                }
+            });
+
+            // Supabase bağlantı durumunu güncelle
+            const supabaseStatusElement = document.querySelector('.status-indicator.status-online');
+            if (supabaseStatusElement) {
+                supabaseStatusElement.className = 'status-indicator ' + (error ? 'status-offline' : 'status-online');
+            }
+        } else {
+            // Supabase yoksa offline göster
+            const statusElements = document.querySelectorAll('.status-indicator');
+            statusElements.forEach(element => {
+                if (element.classList.contains('status-online')) {
+                    element.className = 'status-indicator status-offline';
+                }
+            });
+        }
+    } catch (error) {
+        console.error('Error checking system status:', error);
+        // Hata durumunda offline göster
         const statusElements = document.querySelectorAll('.status-indicator');
         statusElements.forEach(element => {
             if (element.classList.contains('status-online')) {
-                element.className = 'status-indicator ' + (error ? 'status-offline' : 'status-online');
+                element.className = 'status-indicator status-offline';
             }
         });
-    } catch (error) {
-        console.error('Error checking system status:', error);
     }
 }
 
