@@ -2,6 +2,10 @@
 const SUPABASE_URL = 'https://ebrwfexnxhpstkfzdkax.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVicndmZXhueGhwc3RrZnpka2F4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2Mzk0MTMsImV4cCI6MjA3MTIxNTQxM30.VwtwesSfm1_O-2D0orbA1McKUsMQqXZLo6Jg2d0YG5k';
 
+// OneSignal Configuration
+const ONESIGNAL_APP_ID = 'f6893c74-b3d5-405e-90ae-3d2c7a1b0d1e';
+const ONESIGNAL_REST_API_KEY = 'NGFiYmQ4MjEtY2ExNS00MDk5LTg4NDctNzBkZTU2YzkzMWQw';
+
 // Initialize Supabase client (wait for supabase to be available)
 let supabase = null;
 
@@ -1347,9 +1351,7 @@ function downloadReport(reportId) {
 
 // ===== NOTIFICATION FUNCTIONS =====
 
-// OneSignal REST API Configuration
-const ONESIGNAL_APP_ID = '1d09cb0d-6943-4d92-8c84-5d80dadd2819';
-const ONESIGNAL_REST_API_KEY = 'os_v2_app_due4wdljingzfdeelwanvxjidedvvvtnsrdefzuhvl27gsd4sexnrtoc2a3derojfmsefcedh53mor5rm5ps6z6uv7k5yold2dxdbhy';
+// OneSignal REST API Configuration (using constants from top of file)
 
 // Global variables for notifications
 let selectedUsers = [];
@@ -1396,17 +1398,43 @@ function displayNotificationHistory(notifications) {
         `;
         return;
     }
-
-    historyContainer.innerHTML = notifications.map(notification => `
-        <div class="d-flex justify-content-between align-items-start mb-3">
-            <div class="flex-grow-1">
-                <h6 class="mb-1">${notification.title}</h6>
-                <p class="mb-1 text-muted small">${notification.body}</p>
-                <small class="text-muted">${formatDate(notification.created_at)}</small>
+    
+    historyContainer.innerHTML = notifications.map(notification => {
+        // Parse data field if it exists
+        const data = notification.data || {};
+        const audienceText = getAudienceText(data.audience_type);
+        const sentBy = data.sent_by_name || 'Sistem';
+        const successCount = data.success_count || 0;
+        const totalCount = data.total_count || 0;
+        
+        return `
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h6 class="mb-1">${notification.title}</h6>
+                        <span class="badge ${getStatusBadgeClass(notification.status)}">${notification.status}</span>
+                    </div>
+                    <p class="mb-2 text-muted small">${notification.body}</p>
+                    <div class="row text-muted small">
+                        <div class="col-md-6">
+                            <i class="fas fa-user"></i> ${sentBy}
+                        </div>
+                        <div class="col-md-6">
+                            <i class="fas fa-users"></i> ${audienceText}
+                        </div>
+                    </div>
+                    <div class="row text-muted small mt-1">
+                        <div class="col-md-6">
+                            <i class="fas fa-clock"></i> ${formatDate(notification.sent_at || notification.created_at)}
+                        </div>
+                        <div class="col-md-6">
+                            <i class="fas fa-chart-bar"></i> ${successCount}/${totalCount} başarılı
+                        </div>
+                    </div>
+                </div>
             </div>
-            <span class="badge ${getStatusBadgeClass(notification.status)}">${notification.status}</span>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 // Load notification statistics
@@ -1587,9 +1615,10 @@ async function sendNotification(formData) {
         });
 
         const result = await response.json();
+        console.log('OneSignal Response:', result);
 
-        if (response.ok) {
-            // Save to Supabase
+        if (response.ok && result.id) {
+            // Save to Supabase with enhanced data structure
             await saveNotificationToDatabase({
                 title,
                 body,
@@ -1598,10 +1627,12 @@ async function sendNotification(formData) {
                 segment,
                 user_ids: audience === 'specific' ? users.map(u => u.id) : null,
                 onesignal_id: result.id,
-                status: 'sent'
+                status: 'sent',
+                recipients: result.recipients || 0,
+                external_id_count: result.external_id_count || 0
             });
 
-            showAlert('Bildirim başarıyla gönderildi!', 'success');
+            showAlert(`Bildirim başarıyla gönderildi! ${result.recipients || 'Bilinmeyen'} alıcıya ulaştı.`, 'success');
             
             // Reset form
             document.getElementById('notificationForm').reset();
@@ -1614,7 +1645,9 @@ async function sendNotification(formData) {
             await loadNotificationHistory();
             await loadNotificationStats();
         } else {
-            throw new Error(result.errors ? result.errors.join(', ') : 'Bildirim gönderilemedi');
+            const errorMessage = result.errors ? result.errors.join(', ') : 'Bildirim gönderilemedi';
+            console.error('OneSignal Error:', result);
+            throw new Error(errorMessage);
         }
     } catch (error) {
         console.error('Error sending notification:', error);
@@ -1626,22 +1659,40 @@ async function sendNotification(formData) {
 async function saveNotificationToDatabase(notificationData) {
     try {
         if (supabase) {
-            const { error } = await supabase
-                .from('push_notifications')
-                .insert({
-                    title: notificationData.title,
-                    body: notificationData.body,
+            // Enhanced data structure to match new notification system
+            const notificationRecord = {
+                user_id: currentAdmin.id,
+                title: notificationData.title,
+                body: notificationData.body,
+                status: notificationData.status,
+                data: {
                     type: notificationData.type,
                     audience_type: notificationData.audience,
-                    segment: notificationData.segment,
-                    user_ids: notificationData.user_ids,
-                    notification_id: notificationData.onesignal_id,
-                    status: notificationData.status,
-                    sent_by: currentAdmin.id
-                });
+                    segment: notificationData.segment || null,
+                    success_count: notificationData.recipients || 0,
+                    total_count: notificationData.external_id_count || notificationData.recipients || 0,
+                    timestamp: new Date().toISOString(),
+                    admin_sent: true,
+                    sent_by: currentAdmin.id,
+                    sent_by_name: currentAdmin.name,
+                    onesignal_id: notificationData.onesignal_id
+                },
+                sent_at: new Date().toISOString()
+            };
+
+            // Add user_ids if specific targeting
+            if (notificationData.user_ids && notificationData.user_ids.length > 0) {
+                notificationRecord.data.user_ids = notificationData.user_ids;
+            }
+
+            const { error } = await supabase
+                .from('push_notifications')
+                .insert(notificationRecord);
 
             if (error) {
                 console.error('Error saving notification to database:', error);
+            } else {
+                console.log('Notification saved to database successfully');
             }
         }
     } catch (error) {
@@ -1694,6 +1745,16 @@ function getStatusBadgeClass(status) {
         case 'failed': return 'bg-danger';
         case 'pending': return 'bg-warning';
         default: return 'bg-secondary';
+    }
+}
+
+function getAudienceText(audienceType) {
+    switch (audienceType) {
+        case 'all': return 'Tüm Kullanıcılar';
+        case 'segment': return 'Segment';
+        case 'specific': return 'Seçili Kullanıcılar';
+        case 'neighborhood': return 'Mahalle';
+        default: return audienceType || 'Bilinmeyen';
     }
 }
 
