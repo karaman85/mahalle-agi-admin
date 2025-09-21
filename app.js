@@ -394,6 +394,18 @@ function loadPageData(pageName) {
         case 'users':
             loadUsersData();
             break;
+        case 'security':
+            loadSecurityData();
+            break;
+        case 'levels':
+            loadLevelsData();
+            break;
+        case 'reports':
+            loadSecurityReportsData();
+            break;
+        case 'notifications':
+            loadNotificationsData();
+            break;
         case 'analytics':
             loadAnalyticsData();
             break;
@@ -854,6 +866,843 @@ function formatDate(dateString) {
     if (diffDays < 7) return `${diffDays} gün önce`;
     
     return date.toLocaleDateString('tr-TR');
+}
+
+// Load Security Data
+async function loadSecurityData() {
+    try {
+        if (supabase) {
+            // Güvenlik istatistiklerini yükle
+            const [securityEvents, securityAlerts, lockedAccounts] = await Promise.all([
+                supabase.from('security_events').select('id', { count: 'exact' }),
+                supabase.from('security_alerts').select('id', { count: 'exact' }),
+                supabase.from('account_locks').select('id', { count: 'exact' }).eq('is_locked', true)
+            ]);
+
+            // İstatistikleri güncelle
+            updateSecurityStats({
+                totalEvents: securityEvents.count || 0,
+                totalAlerts: securityAlerts.count || 0,
+                unresolvedEvents: 0, // TODO: Çözülmemiş olayları say
+                lockedAccounts: lockedAccounts.count || 0
+            });
+
+            // Kritik alert'leri yükle
+            const { data: criticalAlerts, error: alertsError } = await supabase
+                .from('security_alerts')
+                .select('*')
+                .eq('severity', 'critical')
+                .order('timestamp', { ascending: false })
+                .limit(10);
+
+            if (!alertsError && criticalAlerts) {
+                updateCriticalAlertsTable(criticalAlerts);
+            }
+
+            // Son güvenlik olaylarını yükle
+            const { data: recentEvents, error: eventsError } = await supabase
+                .from('security_events')
+                .select('*')
+                .order('timestamp', { ascending: false })
+                .limit(10);
+
+            if (!eventsError && recentEvents) {
+                updateSecurityEventsTable(recentEvents);
+                updateRecentSecurityEvents(recentEvents);
+            }
+        } else {
+            console.log('Supabase not available, using default data');
+        }
+    } catch (error) {
+        console.error('Error loading security data:', error);
+    }
+}
+
+// Update Security Stats
+function updateSecurityStats(stats) {
+    const totalEventsElement = document.getElementById('totalSecurityEvents');
+    const totalAlertsElement = document.getElementById('totalSecurityAlerts');
+    const unresolvedEventsElement = document.getElementById('unresolvedEvents');
+    const lockedAccountsElement = document.getElementById('lockedAccounts');
+
+    if (totalEventsElement) totalEventsElement.textContent = stats.totalEvents;
+    if (totalAlertsElement) totalAlertsElement.textContent = stats.totalAlerts;
+    if (unresolvedEventsElement) unresolvedEventsElement.textContent = stats.unresolvedEvents;
+    if (lockedAccountsElement) lockedAccountsElement.textContent = stats.lockedAccounts;
+}
+
+// Update Critical Alerts Table
+function updateCriticalAlertsTable(alerts) {
+    const tbody = document.getElementById('criticalAlertsTable');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+    
+    alerts.forEach(alert => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${getAlertTypeText(alert.type)}</td>
+            <td>${alert.message}</td>
+            <td><span class="badge badge-${getSeverityColor(alert.severity)}">${getSeverityText(alert.severity)}</span></td>
+            <td>${formatDate(alert.timestamp)}</td>
+            <td>
+                <button class="btn btn-sm btn-primary me-1" onclick="viewAlert('${alert.id}')">Görüntüle</button>
+                <button class="btn btn-sm btn-success" onclick="markAlertAsRead('${alert.id}')">Okundu</button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+// Update Security Events Table
+function updateSecurityEventsTable(events) {
+    const tbody = document.getElementById('securityEventsTable');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+    
+    events.forEach(event => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${getEventTypeText(event.type)}</td>
+            <td>${event.user_id}</td>
+            <td>${event.description}</td>
+            <td><span class="badge badge-${getSeverityColor(event.severity)}">${getSeverityText(event.severity)}</span></td>
+            <td>${formatDate(event.timestamp)}</td>
+            <td><span class="badge badge-${event.is_resolved ? 'success' : 'warning'}">${event.is_resolved ? 'Çözüldü' : 'Bekliyor'}</span></td>
+            <td>
+                ${!event.is_resolved ? `<button class="btn btn-sm btn-success" onclick="resolveEvent('${event.id}')">Çöz</button>` : ''}
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+// Update Recent Security Events
+function updateRecentSecurityEvents(events) {
+    const container = document.getElementById('recentSecurityEvents');
+    if (!container) return;
+
+    container.innerHTML = '';
+    
+    events.slice(0, 5).forEach(event => {
+        const eventDiv = document.createElement('div');
+        eventDiv.className = 'mb-3 p-2 border rounded';
+        eventDiv.innerHTML = `
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <strong>${getEventTypeText(event.type)}</strong>
+                    <br>
+                    <small class="text-muted">${event.user_id}</small>
+                </div>
+                <span class="badge badge-${getSeverityColor(event.severity)} badge-sm">${getSeverityText(event.severity)}</span>
+            </div>
+            <div class="mt-2">
+                <small class="text-muted">${formatDate(event.timestamp)}</small>
+            </div>
+        `;
+        container.appendChild(eventDiv);
+    });
+}
+
+// Load Levels Data
+async function loadLevelsData() {
+    try {
+        if (supabase) {
+            // Seviye istatistiklerini yükle
+            const [bronzeUsers, silverUsers, goldUsers, pendingRequests] = await Promise.all([
+                supabase.from('users').select('id', { count: 'exact' }).eq('verification_level', 'bronze'),
+                supabase.from('users').select('id', { count: 'exact' }).eq('verification_level', 'silver'),
+                supabase.from('users').select('id', { count: 'exact' }).eq('verification_level', 'gold'),
+                supabase.from('level_upgrade_requests').select('id', { count: 'exact' }).eq('status', 'pending')
+            ]);
+
+            // İstatistikleri güncelle
+            updateLevelsStats({
+                bronze: bronzeUsers.count || 0,
+                silver: silverUsers.count || 0,
+                gold: goldUsers.count || 0,
+                pendingRequests: pendingRequests.count || 0
+            });
+
+            // Bekleyen seviye yükseltme taleplerini yükle
+            const { data: upgradeRequests, error } = await supabase
+                .from('level_upgrade_requests')
+                .select(`
+                    *,
+                    user:users!level_upgrade_requests_user_id_fkey(name, email)
+                `)
+                .eq('status', 'pending')
+                .order('requested_at', { ascending: false })
+                .limit(20);
+
+            if (!error && upgradeRequests) {
+                updateLevelUpgradeRequestsTable(upgradeRequests);
+            }
+        } else {
+            console.log('Supabase not available, using default data');
+        }
+    } catch (error) {
+        console.error('Error loading levels data:', error);
+    }
+}
+
+// Update Levels Stats
+function updateLevelsStats(stats) {
+    const bronzeCard = document.querySelector('#levelsPage .col-md-3:nth-child(1) .card-body h3');
+    const silverCard = document.querySelector('#levelsPage .col-md-3:nth-child(2) .card-body h3');
+    const goldCard = document.querySelector('#levelsPage .col-md-3:nth-child(3) .card-body h3');
+    const pendingCard = document.querySelector('#levelsPage .col-md-3:nth-child(4) .card-body h3');
+
+    if (bronzeCard) bronzeCard.textContent = stats.bronze;
+    if (silverCard) silverCard.textContent = stats.silver;
+    if (goldCard) goldCard.textContent = stats.gold;
+    if (pendingCard) pendingCard.textContent = stats.pendingRequests;
+}
+
+// Update Level Upgrade Requests Table
+function updateLevelUpgradeRequestsTable(requests) {
+    const tbody = document.getElementById('levelUpgradeRequestsTable');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+    
+    requests.forEach(request => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${request.user?.name || request.user_id}</td>
+            <td><span class="badge badge-warning">${request.from_level.toUpperCase()}</span></td>
+            <td><span class="badge badge-success">${request.to_level.toUpperCase()}</span></td>
+            <td>${formatDate(request.requested_at)}</td>
+            <td>${request.submitted_documents.join(', ')}</td>
+            <td>
+                <button class="btn btn-sm btn-success me-1" onclick="approveLevelUpgrade('${request.id}')">Onayla</button>
+                <button class="btn btn-sm btn-danger" onclick="rejectLevelUpgrade('${request.id}')">Reddet</button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+// Load Security Reports Data
+async function loadSecurityReportsData() {
+    try {
+        if (supabase) {
+            // Güvenlik raporlarını yükle
+            const { data: reports, error } = await supabase
+                .from('security_reports')
+                .select('*')
+                .order('generated_at', { ascending: false })
+                .limit(20);
+
+            if (!error && reports) {
+                updateSecurityReportsTable(reports);
+            }
+        } else {
+            console.log('Supabase not available, using default data');
+        }
+    } catch (error) {
+        console.error('Error loading security reports data:', error);
+    }
+}
+
+// Update Security Reports Table
+function updateSecurityReportsTable(reports) {
+    const tbody = document.getElementById('securityReportsTable');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+    
+    reports.forEach(report => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${report.title}</td>
+            <td><span class="badge badge-info">${getReportTypeText(report.type)}</span></td>
+            <td>${formatDate(report.period_start)} - ${formatDate(report.period_end)}</td>
+            <td><span class="badge badge-${getSeverityColor(report.overall_severity)}">${getSeverityText(report.overall_severity)}</span></td>
+            <td>${formatDate(report.generated_at)}</td>
+            <td>
+                <button class="btn btn-sm btn-primary me-1" onclick="viewReport('${report.id}')">Görüntüle</button>
+                <button class="btn btn-sm btn-success" onclick="downloadReport('${report.id}')">İndir</button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+// Generate Report
+async function generateReport(type) {
+    try {
+        showAlert(`${type} raporu oluşturuluyor...`, 'info');
+        
+        if (supabase) {
+            const { data, error } = await supabase.rpc('generate_security_report', {
+                report_type: type
+            });
+
+            if (!error && data) {
+                showAlert(`${type} raporu başarıyla oluşturuldu!`, 'success');
+                loadSecurityReportsData(); // Sayfayı yenile
+            } else {
+                showAlert('Rapor oluşturulurken hata oluştu.', 'danger');
+            }
+        } else {
+            showAlert(`${type} raporu oluşturuldu! (Test modu)`, 'success');
+        }
+    } catch (error) {
+        console.error('Error generating report:', error);
+        showAlert('Rapor oluşturulurken hata oluştu.', 'danger');
+    }
+}
+
+// Generate Custom Report
+function generateCustomReport() {
+    const startDate = prompt('Başlangıç tarihi (YYYY-MM-DD):');
+    const endDate = prompt('Bitiş tarihi (YYYY-MM-DD):');
+    
+    if (startDate && endDate) {
+        showAlert(`Özel rapor oluşturuluyor (${startDate} - ${endDate})...`, 'info');
+        // TODO: Özel rapor oluşturma implementasyonu
+    }
+}
+
+// Utility Functions for Security
+function getAlertTypeText(type) {
+    const types = {
+        'suspicious_login': 'Şüpheli Giriş',
+        'multiple_failed_attempts': 'Çoklu Başarısız Deneme',
+        'unusual_location': 'Olağandışı Konum',
+        'device_change': 'Cihaz Değişikliği',
+        'rapid_actions': 'Hızlı İşlemler',
+        'fraud_detected': 'Fraud Tespiti',
+        'account_locked': 'Hesap Kilitlendi',
+        'admin_action': 'Admin İşlemi',
+        'data_breach': 'Veri İhlali',
+        'system_anomaly': 'Sistem Anomalisi'
+    };
+    return types[type] || type;
+}
+
+function getEventTypeText(type) {
+    return getAlertTypeText(type); // Aynı mapping kullanılıyor
+}
+
+function getSeverityColor(severity) {
+    switch (severity) {
+        case 'low': return 'info';
+        case 'medium': return 'warning';
+        case 'high': return 'danger';
+        case 'critical': return 'dark';
+        default: return 'secondary';
+    }
+}
+
+function getSeverityText(severity) {
+    switch (severity) {
+        case 'low': return 'Düşük';
+        case 'medium': return 'Orta';
+        case 'high': return 'Yüksek';
+        case 'critical': return 'Kritik';
+        default: return severity;
+    }
+}
+
+function getReportTypeText(type) {
+    switch (type) {
+        case 'daily': return 'Günlük';
+        case 'weekly': return 'Haftalık';
+        case 'monthly': return 'Aylık';
+        case 'custom': return 'Özel';
+        default: return type;
+    }
+}
+
+// Security Actions
+async function viewAlert(alertId) {
+    showAlert(`Alert ${alertId.substring(0, 8)} görüntüleniyor...`, 'info');
+}
+
+async function markAlertAsRead(alertId) {
+    try {
+        if (supabase) {
+            const { error } = await supabase
+                .from('security_alerts')
+                .update({ is_read: true })
+                .eq('id', alertId);
+
+            if (!error) {
+                showAlert('Alert okundu olarak işaretlendi.', 'success');
+                loadSecurityData(); // Sayfayı yenile
+            } else {
+                showAlert('Alert güncellenirken hata oluştu.', 'danger');
+            }
+        } else {
+            showAlert('Alert okundu olarak işaretlendi.', 'success');
+        }
+    } catch (error) {
+        console.error('Error marking alert as read:', error);
+        showAlert('Alert güncellenirken hata oluştu.', 'danger');
+    }
+}
+
+async function resolveEvent(eventId) {
+    const notes = prompt('Çözüm notları:');
+    if (notes) {
+        try {
+            if (supabase) {
+                const { error } = await supabase
+                    .from('security_events')
+                    .update({ 
+                        is_resolved: true,
+                        resolved_by: currentAdmin.id,
+                        resolved_at: new Date().toISOString(),
+                        resolution_notes: notes
+                    })
+                    .eq('id', eventId);
+
+                if (!error) {
+                    showAlert('Güvenlik olayı çözüldü.', 'success');
+                    loadSecurityData(); // Sayfayı yenile
+                } else {
+                    showAlert('Olay güncellenirken hata oluştu.', 'danger');
+                }
+            } else {
+                showAlert('Güvenlik olayı çözüldü.', 'success');
+            }
+        } catch (error) {
+            console.error('Error resolving event:', error);
+            showAlert('Olay güncellenirken hata oluştu.', 'danger');
+        }
+    }
+}
+
+// Level Upgrade Actions
+async function approveLevelUpgrade(requestId) {
+    try {
+        if (supabase) {
+            const { error } = await supabase
+                .from('level_upgrade_requests')
+                .update({ 
+                    status: 'approved',
+                    reviewed_by: currentAdmin.id,
+                    reviewed_at: new Date().toISOString(),
+                    admin_notes: 'Admin tarafından onaylandı'
+                })
+                .eq('id', requestId);
+
+            if (!error) {
+                showAlert('Seviye yükseltme talebi onaylandı.', 'success');
+                loadLevelsData(); // Sayfayı yenile
+            } else {
+                showAlert('Talep güncellenirken hata oluştu.', 'danger');
+            }
+        } else {
+            showAlert('Seviye yükseltme talebi onaylandı.', 'success');
+        }
+    } catch (error) {
+        console.error('Error approving level upgrade:', error);
+        showAlert('Talep güncellenirken hata oluştu.', 'danger');
+    }
+}
+
+async function rejectLevelUpgrade(requestId) {
+    const reason = prompt('Reddetme sebebi:');
+    if (reason) {
+        try {
+            if (supabase) {
+                const { error } = await supabase
+                    .from('level_upgrade_requests')
+                    .update({ 
+                        status: 'rejected',
+                        reviewed_by: currentAdmin.id,
+                        reviewed_at: new Date().toISOString(),
+                        admin_notes: reason
+                    })
+                    .eq('id', requestId);
+
+                if (!error) {
+                    showAlert('Seviye yükseltme talebi reddedildi.', 'danger');
+                    loadLevelsData(); // Sayfayı yenile
+                } else {
+                    showAlert('Talep güncellenirken hata oluştu.', 'danger');
+                }
+            } else {
+                showAlert('Seviye yükseltme talebi reddedildi.', 'danger');
+            }
+        } catch (error) {
+            console.error('Error rejecting level upgrade:', error);
+            showAlert('Talep güncellenirken hata oluştu.', 'danger');
+        }
+    }
+}
+
+// Report Actions
+function viewReport(reportId) {
+    showAlert(`Rapor ${reportId.substring(0, 8)} görüntüleniyor...`, 'info');
+}
+
+function downloadReport(reportId) {
+    showAlert(`Rapor ${reportId.substring(0, 8)} indiriliyor...`, 'info');
+}
+
+// ===== NOTIFICATION FUNCTIONS =====
+
+// OneSignal REST API Configuration
+const ONESIGNAL_APP_ID = '1d09cb0d-6943-4d92-8c84-5d80dadd2819';
+const ONESIGNAL_REST_API_KEY = 'os_v2_app_due4wdljingzfdeelwanvxjidedvvvtnsrdefzuhvl27gsd4sexnrtoc2a3derojfmsefcedh53mor5rm5ps6z6uv7k5yold2dxdbhy';
+
+// Global variables for notifications
+let selectedUsers = [];
+
+// Load notification page data
+async function loadNotificationsData() {
+    try {
+        await loadNotificationHistory();
+        await loadNotificationStats();
+    } catch (error) {
+        console.error('Error loading notifications data:', error);
+    }
+}
+
+// Load notification history
+async function loadNotificationHistory() {
+    try {
+        if (supabase) {
+            const { data, error } = await supabase
+                .from('push_notifications')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(10);
+
+            if (!error && data) {
+                displayNotificationHistory(data);
+            }
+        }
+    } catch (error) {
+        console.error('Error loading notification history:', error);
+    }
+}
+
+// Display notification history
+function displayNotificationHistory(notifications) {
+    const historyContainer = document.getElementById('notificationHistory');
+    
+    if (notifications.length === 0) {
+        historyContainer.innerHTML = `
+            <div class="text-center text-muted">
+                <i class="fas fa-bell-slash fa-3x mb-3"></i>
+                <p>Henüz bildirim gönderilmemiş</p>
+            </div>
+        `;
+        return;
+    }
+
+    historyContainer.innerHTML = notifications.map(notification => `
+        <div class="d-flex justify-content-between align-items-start mb-3">
+            <div class="flex-grow-1">
+                <h6 class="mb-1">${notification.title}</h6>
+                <p class="mb-1 text-muted small">${notification.body}</p>
+                <small class="text-muted">${formatDate(notification.created_at)}</small>
+            </div>
+            <span class="badge ${getStatusBadgeClass(notification.status)}">${notification.status}</span>
+        </div>
+    `).join('');
+}
+
+// Load notification statistics
+async function loadNotificationStats() {
+    try {
+        if (supabase) {
+            const { data, error } = await supabase
+                .from('push_notifications')
+                .select('status');
+
+            if (!error && data) {
+                const totalSent = data.length;
+                const totalDelivered = data.filter(n => n.status === 'sent').length;
+                
+                document.getElementById('totalSent').textContent = totalSent;
+                document.getElementById('totalDelivered').textContent = totalDelivered;
+            }
+        }
+    } catch (error) {
+        console.error('Error loading notification stats:', error);
+    }
+}
+
+// Handle audience selection change
+function handleAudienceChange() {
+    const audienceType = document.querySelector('input[name="audience"]:checked').value;
+    
+    // Hide all audience-specific sections
+    document.getElementById('segmentSelection').style.display = 'none';
+    document.getElementById('specificUsers').style.display = 'none';
+    
+    // Show relevant section
+    if (audienceType === 'segment') {
+        document.getElementById('segmentSelection').style.display = 'block';
+    } else if (audienceType === 'specific') {
+        document.getElementById('specificUsers').style.display = 'block';
+    }
+}
+
+// Search users
+async function searchUsers() {
+    const searchTerm = document.getElementById('userSearch').value.trim();
+    
+    if (!searchTerm) {
+        showAlert('Lütfen arama terimi girin', 'warning');
+        return;
+    }
+
+    try {
+        if (supabase) {
+            const { data, error } = await supabase
+                .from('users')
+                .select('id, email, full_name')
+                .or(`email.ilike.%${searchTerm}%,full_name.ilike.%${searchTerm}%,id.ilike.%${searchTerm}%`)
+                .limit(10);
+
+            if (!error && data) {
+                displaySearchResults(data);
+            }
+        } else {
+            // Test data for demo
+            const testUsers = [
+                { id: '2779f460-9b33-4735-8fad-5ca86ae79879', email: 'test@example.com', full_name: 'Test User' },
+                { id: '123e4567-e89b-12d3-a456-426614174000', email: 'admin@example.com', full_name: 'Admin User' },
+                { id: '456e7890-e89b-12d3-a456-426614174001', email: 'moderator@example.com', full_name: 'Moderator User' }
+            ].filter(user => 
+                user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                user.id.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+            displaySearchResults(testUsers);
+        }
+    } catch (error) {
+        console.error('Error searching users:', error);
+        showAlert('Kullanıcı arama hatası', 'danger');
+    }
+}
+
+// Display search results
+function displaySearchResults(users) {
+    const resultsContainer = document.getElementById('searchResults');
+    const resultsList = resultsContainer.querySelector('.list-group');
+    
+    if (users.length === 0) {
+        resultsList.innerHTML = '<div class="list-group-item text-center text-muted">Kullanıcı bulunamadı</div>';
+    } else {
+        resultsList.innerHTML = users.map(user => `
+            <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" 
+                 onclick="selectUser('${user.id}', '${user.full_name || user.email}')">
+                <div>
+                    <strong>${user.full_name || 'İsimsiz Kullanıcı'}</strong>
+                    <br>
+                    <small class="text-muted">${user.email}</small>
+                </div>
+                <i class="fas fa-plus text-success"></i>
+            </div>
+        `).join('');
+    }
+    
+    resultsContainer.style.display = 'block';
+}
+
+// Select user
+function selectUser(userId, userName) {
+    if (!selectedUsers.find(u => u.id === userId)) {
+        selectedUsers.push({ id: userId, name: userName });
+        updateSelectedUsersDisplay();
+    }
+    
+    // Clear search
+    document.getElementById('userSearch').value = '';
+    document.getElementById('searchResults').style.display = 'none';
+}
+
+// Update selected users display
+function updateSelectedUsersDisplay() {
+    const container = document.getElementById('selectedUsers');
+    
+    if (selectedUsers.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    container.innerHTML = `
+        <div class="mb-2">
+            <strong>Seçili Kullanıcılar (${selectedUsers.length}):</strong>
+        </div>
+        ${selectedUsers.map(user => `
+            <span class="badge bg-success me-1 mb-1">
+                ${user.name}
+                <button type="button" class="btn-close btn-close-white ms-1" 
+                        onclick="removeUser('${user.id}')" style="font-size: 0.7em;"></button>
+            </span>
+        `).join('')}
+    `;
+}
+
+// Remove user from selection
+function removeUser(userId) {
+    selectedUsers = selectedUsers.filter(u => u.id !== userId);
+    updateSelectedUsersDisplay();
+}
+
+// Send notification
+async function sendNotification(formData) {
+    try {
+        const { title, body, type, audience, segment, users } = formData;
+        
+        // Prepare OneSignal payload
+        const payload = {
+            app_id: ONESIGNAL_APP_ID,
+            headings: { en: title },
+            contents: { en: body },
+            data: {
+                type: type,
+                admin_sent: true,
+                timestamp: new Date().toISOString()
+            }
+        };
+
+        // Add targeting based on audience
+        if (audience === 'all') {
+            payload.included_segments = ['All'];
+        } else if (audience === 'segment') {
+            payload.included_segments = [segment];
+        } else if (audience === 'specific' && users.length > 0) {
+            payload.include_external_user_ids = users.map(u => u.id);
+        }
+
+        // Send to OneSignal
+        const response = await fetch('https://onesignal.com/api/v1/notifications', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Basic ${ONESIGNAL_REST_API_KEY}`
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            // Save to Supabase
+            await saveNotificationToDatabase({
+                title,
+                body,
+                type,
+                audience,
+                segment,
+                user_ids: audience === 'specific' ? users.map(u => u.id) : null,
+                onesignal_id: result.id,
+                status: 'sent'
+            });
+
+            showAlert('Bildirim başarıyla gönderildi!', 'success');
+            
+            // Reset form
+            document.getElementById('notificationForm').reset();
+            selectedUsers = [];
+            updateSelectedUsersDisplay();
+            document.getElementById('segmentSelection').style.display = 'none';
+            document.getElementById('specificUsers').style.display = 'none';
+            
+            // Refresh data
+            await loadNotificationHistory();
+            await loadNotificationStats();
+        } else {
+            throw new Error(result.errors ? result.errors.join(', ') : 'Bildirim gönderilemedi');
+        }
+    } catch (error) {
+        console.error('Error sending notification:', error);
+        showAlert(`Bildirim gönderme hatası: ${error.message}`, 'danger');
+    }
+}
+
+// Save notification to database
+async function saveNotificationToDatabase(notificationData) {
+    try {
+        if (supabase) {
+            const { error } = await supabase
+                .from('push_notifications')
+                .insert({
+                    title: notificationData.title,
+                    body: notificationData.body,
+                    type: notificationData.type,
+                    audience_type: notificationData.audience,
+                    segment: notificationData.segment,
+                    user_ids: notificationData.user_ids,
+                    notification_id: notificationData.onesignal_id,
+                    status: notificationData.status,
+                    sent_by: currentAdmin.id
+                });
+
+            if (error) {
+                console.error('Error saving notification to database:', error);
+            }
+        }
+    } catch (error) {
+        console.error('Error saving notification:', error);
+    }
+}
+
+// Handle notification form submission
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('notificationForm');
+    if (form) {
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(form);
+            const notificationData = {
+                title: document.getElementById('notificationTitle').value,
+                body: document.getElementById('notificationMessage').value,
+                type: document.getElementById('notificationType').value,
+                audience: document.querySelector('input[name="audience"]:checked').value,
+                segment: document.getElementById('segmentType').value,
+                users: selectedUsers
+            };
+
+            // Validation
+            if (!notificationData.title || !notificationData.body || !notificationData.type) {
+                showAlert('Lütfen tüm zorunlu alanları doldurun', 'warning');
+                return;
+            }
+
+            if (notificationData.audience === 'specific' && selectedUsers.length === 0) {
+                showAlert('Lütfen en az bir kullanıcı seçin', 'warning');
+                return;
+            }
+
+            await sendNotification(notificationData);
+        });
+    }
+
+    // Handle audience radio button changes
+    document.querySelectorAll('input[name="audience"]').forEach(radio => {
+        radio.addEventListener('change', handleAudienceChange);
+    });
+});
+
+// Utility functions
+function getStatusBadgeClass(status) {
+    switch (status) {
+        case 'sent': return 'bg-success';
+        case 'failed': return 'bg-danger';
+        case 'pending': return 'bg-warning';
+        default: return 'bg-secondary';
+    }
+}
+
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('tr-TR') + ' ' + date.toLocaleTimeString('tr-TR', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+    });
 }
 
 // Initialize page

@@ -327,6 +327,30 @@
                                 </a>
                             </li>
                             <li class="nav-item">
+                                <a class="nav-link" href="#" onclick="showPage('security')">
+                                    <i class="fas fa-shield-alt"></i>
+                                    Güvenlik
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="#" onclick="showPage('levels')">
+                                    <i class="fas fa-medal"></i>
+                                    Seviye Yönetimi
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="#" onclick="showPage('reports')">
+                                    <i class="fas fa-file-alt"></i>
+                                    Güvenlik Raporları
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="#" onclick="showPage('notifications')">
+                                    <i class="fas fa-bell"></i>
+                                    Bildirimler
+                                </a>
+                            </li>
+                            <li class="nav-item">
                                 <a class="nav-link" href="#" onclick="showPage('analytics')">
                                     <i class="fas fa-chart-bar"></i>
                                     Analitikler
@@ -760,6 +784,421 @@
                                             <div class="d-flex justify-content-between">
                                                 <span>Cache</span>
                                                 <span class="badge badge-success">Aktif</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Güvenlik Dashboard Sayfası -->
+                    <div id="securityPage" class="page-content">
+                        <h2 class="mb-4">
+                            <i class="fas fa-shield-alt me-2"></i>
+                            Güvenlik Dashboard
+                        </h2>
+                        
+                        <!-- Güvenlik İstatistikleri -->
+                        <div class="row mb-4">
+                            <div class="col-md-3 mb-3">
+                                <div class="stat-card">
+                                    <div class="stat-number" id="totalSecurityEvents">0</div>
+                                    <div class="stat-label">Toplam Güvenlik Olayı</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="stat-card">
+                                    <div class="stat-number" id="totalSecurityAlerts">0</div>
+                                    <div class="stat-label">Toplam Alert</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="stat-card">
+                                    <div class="stat-number" id="unresolvedEvents">0</div>
+                                    <div class="stat-label">Çözülmemiş Olay</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="stat-card">
+                                    <div class="stat-number" id="lockedAccounts">0</div>
+                                    <div class="stat-label">Kilitli Hesap</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Kritik Alert'ler -->
+                        <div class="row mb-4">
+                            <div class="col-md-8">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">
+                                            <i class="fas fa-exclamation-triangle me-2"></i>
+                                            Kritik Güvenlik Alert'leri
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Alert Türü</th>
+                                                        <th>Açıklama</th>
+                                                        <th>Severity</th>
+                                                        <th>Tarih</th>
+                                                        <th>İşlemler</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="criticalAlertsTable">
+                                                    <tr>
+                                                        <td colspan="5" class="text-center text-muted">Kritik alert bulunmuyor</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">
+                                            <i class="fas fa-clock me-2"></i>
+                                            Son Güvenlik Olayları
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="recentSecurityEvents">
+                                            <p class="text-muted text-center">Son olaylar yükleniyor...</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Güvenlik Olayları -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">Güvenlik Olayları</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Olay Türü</th>
+                                                <th>Kullanıcı</th>
+                                                <th>Açıklama</th>
+                                                <th>Severity</th>
+                                                <th>Tarih</th>
+                                                <th>Durum</th>
+                                                <th>İşlemler</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="securityEventsTable">
+                                            <tr>
+                                                <td colspan="7" class="text-center text-muted">Güvenlik olayı bulunmuyor</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Seviye Yönetimi Sayfası -->
+                    <div id="levelsPage" class="page-content">
+                        <h2 class="mb-4">
+                            <i class="fas fa-medal me-2"></i>
+                            Seviye Yönetimi
+                        </h2>
+                        
+                        <!-- Seviye İstatistikleri -->
+                        <div class="row mb-4">
+                            <div class="col-md-3 mb-3">
+                                <div class="card text-center">
+                                    <div class="card-body">
+                                        <h3 class="text-warning">0</h3>
+                                        <p class="mb-0">Bronze Kullanıcı</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="card text-center">
+                                    <div class="card-body">
+                                        <h3 class="text-secondary">0</h3>
+                                        <p class="mb-0">Silver Kullanıcı</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="card text-center">
+                                    <div class="card-body">
+                                        <h3 class="text-warning">0</h3>
+                                        <p class="mb-0">Gold Kullanıcı</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="card text-center">
+                                    <div class="card-body">
+                                        <h3 class="text-info">0</h3>
+                                        <p class="mb-0">Bekleyen Talep</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Bekleyen Seviye Yükseltme Talepleri -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">Bekleyen Seviye Yükseltme Talepleri</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Kullanıcı</th>
+                                                <th>Mevcut Seviye</th>
+                                                <th>Hedef Seviye</th>
+                                                <th>Talep Tarihi</th>
+                                                <th>Yüklenen Belgeler</th>
+                                                <th>İşlemler</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="levelUpgradeRequestsTable">
+                                            <tr>
+                                                <td colspan="6" class="text-center text-muted">Bekleyen talep bulunmuyor</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Güvenlik Raporları Sayfası -->
+                    <div id="reportsPage" class="page-content">
+                        <h2 class="mb-4">
+                            <i class="fas fa-file-alt me-2"></i>
+                            Güvenlik Raporları
+                        </h2>
+                        
+                        <!-- Rapor Oluşturma Butonları -->
+                        <div class="row mb-4">
+                            <div class="col-md-3 mb-3">
+                                <button class="btn btn-primary w-100" onclick="generateReport('daily')">
+                                    <i class="fas fa-calendar-day me-2"></i>
+                                    Günlük Rapor
+                                </button>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <button class="btn btn-success w-100" onclick="generateReport('weekly')">
+                                    <i class="fas fa-calendar-week me-2"></i>
+                                    Haftalık Rapor
+                                </button>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <button class="btn btn-info w-100" onclick="generateReport('monthly')">
+                                    <i class="fas fa-calendar-alt me-2"></i>
+                                    Aylık Rapor
+                                </button>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <button class="btn btn-warning w-100" onclick="generateCustomReport()">
+                                    <i class="fas fa-cog me-2"></i>
+                                    Özel Rapor
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Rapor Listesi -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">Güvenlik Raporları</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Rapor Başlığı</th>
+                                                <th>Tür</th>
+                                                <th>Dönem</th>
+                                                <th>Severity</th>
+                                                <th>Oluşturulma</th>
+                                                <th>İşlemler</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="securityReportsTable">
+                                            <tr>
+                                                <td colspan="6" class="text-center text-muted">Henüz rapor oluşturulmamış</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Notifications Page -->
+                    <div id="notificationsPage" class="page-content">
+                        <h2 class="mb-4">
+                            <i class="fas fa-bell me-2"></i>
+                            Bildirim Yönetimi
+                        </h2>
+                        
+                        <!-- Bildirim Gönderme Formu -->
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">
+                                            <i class="fas fa-paper-plane me-2"></i>
+                                            Yeni Bildirim Gönder
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <form id="notificationForm">
+                                            <!-- Bildirim Türü -->
+                                            <div class="mb-3">
+                                                <label for="notificationType" class="form-label">Bildirim Türü</label>
+                                                <select class="form-select" id="notificationType" required>
+                                                    <option value="">Tür seçin</option>
+                                                    <option value="general">Genel Duyuru</option>
+                                                    <option value="event">Etkinlik Bildirimi</option>
+                                                    <option value="security">Güvenlik Uyarısı</option>
+                                                    <option value="system">Sistem Güncellemesi</option>
+                                                    <option value="promotion">Promosyon</option>
+                                                </select>
+                                            </div>
+
+                                            <!-- Başlık -->
+                                            <div class="mb-3">
+                                                <label for="notificationTitle" class="form-label">Başlık</label>
+                                                <input type="text" class="form-control" id="notificationTitle" 
+                                                       placeholder="Dikkat çekici bir başlık yazın" maxlength="100" required>
+                                                <div class="form-text">Maksimum 100 karakter</div>
+                                            </div>
+
+                                            <!-- Mesaj -->
+                                            <div class="mb-3">
+                                                <label for="notificationMessage" class="form-label">Mesaj</label>
+                                                <textarea class="form-control" id="notificationMessage" rows="4" 
+                                                          placeholder="Bildirim içeriğini yazın" maxlength="500" required></textarea>
+                                                <div class="form-text">Maksimum 500 karakter</div>
+                                            </div>
+
+                                            <!-- Hedef Kitle -->
+                                            <div class="mb-3">
+                                                <label class="form-label">Hedef Kitle</label>
+                                                <div class="row">
+                                                    <div class="col-md-4">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="radio" name="audience" id="audienceAll" value="all" checked>
+                                                            <label class="form-check-label" for="audienceAll">
+                                                                Tüm Kullanıcılar
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="radio" name="audience" id="audienceSegment" value="segment">
+                                                            <label class="form-check-label" for="audienceSegment">
+                                                                Segment
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="radio" name="audience" id="audienceSpecific" value="specific">
+                                                            <label class="form-check-label" for="audienceSpecific">
+                                                                Belirli Kullanıcılar
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Segment Seçimi -->
+                                            <div class="mb-3" id="segmentSelection" style="display: none;">
+                                                <label for="segmentType" class="form-label">Segment Seçin</label>
+                                                <select class="form-select" id="segmentType">
+                                                    <option value="active">Aktif Kullanıcılar</option>
+                                                    <option value="premium">Premium Kullanıcılar</option>
+                                                    <option value="new">Yeni Kullanıcılar</option>
+                                                    <option value="verified">Doğrulanmış Kullanıcılar</option>
+                                                </select>
+                                            </div>
+
+                                            <!-- Belirli Kullanıcılar -->
+                                            <div class="mb-3" id="specificUsers" style="display: none;">
+                                                <label for="userSearch" class="form-label">Kullanıcı Ara</label>
+                                                <div class="input-group">
+                                                    <input type="text" class="form-control" id="userSearch" placeholder="Kullanıcı ID veya email yazın">
+                                                    <button class="btn btn-outline-secondary" type="button" onclick="searchUsers()">
+                                                        <i class="fas fa-search"></i>
+                                                    </button>
+                                                </div>
+                                                <div id="searchResults" class="mt-2" style="display: none;">
+                                                    <div class="list-group">
+                                                        <!-- Arama sonuçları buraya gelecek -->
+                                                    </div>
+                                                </div>
+                                                <div id="selectedUsers" class="mt-2">
+                                                    <!-- Seçili kullanıcılar buraya gelecek -->
+                                                </div>
+                                            </div>
+
+                                            <!-- Gönder Butonu -->
+                                            <div class="d-grid">
+                                                <button type="submit" class="btn btn-success btn-lg">
+                                                    <i class="fas fa-paper-plane me-2"></i>
+                                                    Bildirimi Gönder
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Bildirim Geçmişi -->
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">
+                                            <i class="fas fa-history me-2"></i>
+                                            Son Bildirimler
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="notificationHistory">
+                                            <div class="text-center text-muted">
+                                                <i class="fas fa-bell-slash fa-3x mb-3"></i>
+                                                <p>Henüz bildirim gönderilmemiş</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- İstatistikler -->
+                                <div class="card mt-3">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">
+                                            <i class="fas fa-chart-pie me-2"></i>
+                                            İstatistikler
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row text-center">
+                                            <div class="col-6">
+                                                <h4 class="text-success" id="totalSent">0</h4>
+                                                <small class="text-muted">Gönderilen</small>
+                                            </div>
+                                            <div class="col-6">
+                                                <h4 class="text-info" id="totalDelivered">0</h4>
+                                                <small class="text-muted">Teslim Edilen</small>
                                             </div>
                                         </div>
                                     </div>
